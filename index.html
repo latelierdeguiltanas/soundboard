@@ -1,0 +1,975 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>AudioBoard JDR — Secure (Bêta)</title>
+<style>
+:root{
+  --bg:#12110c; --panel:#1a1913; --ink:#efe9cc; --ink-dim:#cfcab1;
+  --green:#2f5a35; --green-2:#25532f; --gold:#d8c88f; --accent:#a38d55;
+  --danger:#8b2a2a; --danger-2:#a53333; --shadow:rgba(0,0,0,.45);
+  --ok:#3da66a; --warn:#d39b3d; --miss:#777777; --play:#4a86c5;
+}
+*{box-sizing:border-box}
+html,body{height:100%}
+body{
+  margin:0; background:var(--bg); color:var(--ink);
+  font:500 15px/1.4 system-ui, -apple-system, Segoe UI, Roboto, "Helvetica Neue", Arial;
+}
+button,input,select{font:inherit;color:inherit}
+small, .muted{color:var(--ink-dim)}
+/* Header */
+.header{
+  position:sticky; top:0; z-index:30; backdrop-filter:blur(4px);
+  background:linear-gradient(180deg, rgba(18,17,12,.95), rgba(18,17,12,.85));
+  border-bottom:1px solid rgba(216,200,143,.25);
+}
+.header-inner{
+  display:flex; align-items:center; gap:.5rem; padding:.6rem .8rem; max-width:1400px; margin:0 auto;
+}
+.logo{
+  display:flex; align-items:center; gap:.5rem; cursor:pointer; user-select:none;
+}
+.logo svg{width:32px;height:32px; filter:drop-shadow(0 0 8px rgba(216,200,143,.2))}
+.logo .brand{font-weight:700; letter-spacing:.2px}
+.badge{padding:.15rem .4rem; border:1px solid rgba(216,200,143,.35); border-radius:.4rem; color:var(--gold)}
+.controls{display:flex; gap:.4rem; flex-wrap:wrap; align-items:center; margin-left:auto}
+.btn, .seg{
+  background:linear-gradient(180deg, #1f1d16, #13120e);
+  border:1px solid rgba(216,200,143,.25);
+  border-radius:.6rem; padding:.45rem .65rem; box-shadow:0 2px 6px var(--shadow);
+}
+.btn:hover{border-color:rgba(216,200,143,.5)}
+.btn.primary{background:linear-gradient(180deg, #284a2f, #1b3b22); border-color:rgba(63,118,73,.6)}
+.btn.danger{background:linear-gradient(180deg, #5a1d1d, #3b1313); border-color:rgba(171,60,60,.6)}
+.btn.ghost{background:transparent;border-color:rgba(216,200,143,.25)}
+.btn[disabled]{opacity:.5; pointer-events:none}
+.range{display:flex; align-items:center; gap:.4rem}
+.range input{accent-color:var(--green); width:140px}
+.select, .search{
+  display:flex; align-items:center; gap:.35rem; background:linear-gradient(180deg, #1f1d16, #13120e);
+  border:1px solid rgba(216,200,143,.25); border-radius:.6rem; padding:.35rem .5rem;
+}
+.select select, .search input{background:transparent; border:0; outline:0}
+.search input{width:180px; color:var(--ink)}
+/* Tabs */
+.tabs{
+  position:sticky; top:58px; z-index:25; border-bottom:1px solid rgba(216,200,143,.2);
+  background:linear-gradient(180deg, rgba(18,17,12,.97), rgba(18,17,12,.9));
+}
+.tabs-inner{display:flex; gap:.35rem; padding:.4rem .8rem; max-width:1400px; margin:0 auto; flex-wrap:wrap}
+.tab{
+  padding:.4rem .6rem; border:1px solid rgba(216,200,143,.25); border-radius:.6rem;
+  background:linear-gradient(180deg,#1b1a14,#12110c); cursor:pointer; color:var(--ink-dim)
+}
+.tab.active{color:var(--ink); border-color:rgba(216,200,143,.55); box-shadow:0 2px 6px var(--shadow)}
+/* Grid */
+.main{max-width:1400px; margin:0 auto; padding:1rem .8rem 4.5rem}
+.grid{display:grid; gap:.8rem}
+.grid.cols-2{grid-template-columns:repeat(2,1fr)}
+.grid.cols-3{grid-template-columns:repeat(3,1fr)}
+.grid.cols-4{grid-template-columns:repeat(4,1fr)}
+.grid.cols-5{grid-template-columns:repeat(5,1fr)}
+@media (max-width:760px){
+  .grid{grid-template-columns:repeat(2,1fr)!important}
+  .search input{width:120px}
+}
+/* Cards */
+.card{
+  background:linear-gradient(180deg,#1f1d16,#14130f);
+  border:1px solid rgba(216,200,143,.25); border-radius:1rem; padding:.7rem;
+  box-shadow:0 6px 14px rgba(0,0,0,.35); display:flex; gap:.8rem; position:relative; overflow:hidden;
+}
+.card .icon{
+  width:68px; height:68px; border-radius:.8rem; display:flex; align-items:center; justify-content:center;
+  background:linear-gradient(180deg,#262418,#19170f); border:1px solid rgba(216,200,143,.2)
+}
+.card .body{flex:1; min-width:0}
+.card h4{margin:.1rem 0 .35rem; font-size:15px; line-height:1.2}
+.meta{display:flex; align-items:center; gap:.35rem; flex-wrap:wrap}
+.pill{font-size:12px; padding:.1rem .4rem; border-radius:.5rem; border:1px solid rgba(216,200,143,.28); color:var(--ink-dim)}
+.pill.ok{color:#cfe7d6; border-color:rgba(61,166,106,.6)}
+.pill.miss{color:#ccc; border-color:rgba(120,120,120,.6)}
+.pill.warn{color:#ffe5b8; border-color:rgba(211,155,61,.6)}
+.pill.play{color:#cfe1ff; border-color:rgba(74,134,197,.6)}
+.controls-row{display:flex; align-items:center; gap:.35rem; flex-wrap:wrap; margin-top:.4rem}
+.edit{margin-top:.5rem; padding:.55rem; border-radius:.65rem; background:rgba(37,33,22,.55); border:1px dashed rgba(216,200,143,.25)}
+.edit.hidden{display:none}
+/* Floating PANIC & watermark */
+.panic{
+  position:fixed; left:.8rem; bottom:3.9rem; z-index:40;
+}
+.watermark{
+  position:fixed; right:.6rem; bottom:.4rem; z-index:25; font-size:12px; color:var(--ink-dim);
+  cursor:pointer; opacity:.75; user-select:none;
+}
+/* Footer */
+.footer{
+  position:sticky; bottom:0; z-index:20; background:linear-gradient(0deg, rgba(18,17,12,.95), rgba(18,17,12,.9));
+  border-top:1px solid rgba(216,200,143,.25); padding:.4rem .8rem; color:var(--ink-dim)
+}
+/* Overlay gate */
+.overlay{
+  position:fixed; inset:0; z-index:100; display:flex; align-items:center; justify-content:center;
+  background:linear-gradient(180deg, rgba(12,11,8,.85), rgba(12,11,8,.95)), url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg"/>');
+  backdrop-filter:blur(6px);
+}
+.panel{
+  width:min(560px,92vw); padding:1rem; border-radius:1rem; background:linear-gradient(180deg,#1d1b14,#13120e);
+  border:1px solid rgba(216,200,143,.35); box-shadow:0 14px 32px rgba(0,0,0,.5)
+}
+.panel h3{margin:.2rem 0 .6rem}
+.field{display:flex; gap:.5rem; margin:.5rem 0}
+.field input{flex:1; background:#14130f; border:1px solid rgba(216,200,143,.28); border-radius:.6rem; padding:.6rem .7rem}
+.help{color:var(--ink-dim); font-size:13px}
+/* Admin drawer */
+.drawer{
+  position:fixed; top:0; right:0; height:100%; width:min(560px,92vw); z-index:120;
+  background:linear-gradient(180deg,#1d1b14,#13120e); border-left:1px solid rgba(216,200,143,.35);
+  transform:translateX(100%); transition:transform .25s ease-out; overflow:auto; padding:1rem;
+}
+.drawer.open{transform:none}
+.drawer h3{margin:.2rem 0 .6rem}
+.table{width:100%; border-collapse:collapse; font-size:14px}
+.table th,.table td{border:1px solid rgba(216,200,143,.2); padding:.35rem .45rem}
+.hr{height:1px; background:rgba(216,200,143,.25); margin:.7rem 0}
+/* Toasts */
+.toast-wrap{position:fixed; right:.6rem; top:.6rem; z-index:200; display:flex; flex-direction:column; gap:.4rem; max-width:80vw}
+.toast{
+  background:#232017; border:1px solid rgba(216,200,143,.35); color:var(--ink);
+  padding:.5rem .65rem; border-radius:.6rem; box-shadow:0 8px 20px rgba(0,0,0,.45)
+}
+/* Devtools banner + freeze */
+.dev-banner{
+  position:fixed; left:0; right:0; top:0; z-index:300; background:#4a2b2b; color:#fff;
+  padding:.5rem .8rem; display:none; border-bottom:1px solid #7b3d3d
+}
+.freeze *{pointer-events:none !important; filter:blur(2px)}
+/* Lock state */
+.locked .edit{display:none}
+.locked .lock-hint{display:inline}
+.locked .edit-hint{display:none}
+.unlocked .lock-hint{display:none}
+.unlocked .edit-hint{display:inline}
+/* SVG icons tint */
+svg.iconic{width:36px;height:36px; fill:var(--gold); opacity:.9}
+/* Hidden input for file picks */
+input[type=file]{color:var(--ink);}
+
+/* TODO-MAINT: remplacer logo par SVG officiel */
+</style>
+</head>
+<body class="locked">
+<div class="dev-banner" id="devBanner">Mode développeur détecté. Interface gelée.</div>
+
+<header class="header">
+  <div class="header-inner">
+    <div id="logo" class="logo" title="À propos">
+      <svg viewBox="0 0 64 64" aria-hidden="true">
+        <defs>
+          <radialGradient id="rg" cx="50%" cy="45%" r="60%">
+            <stop offset="0%" stop-color="#d8c88f"/><stop offset="100%" stop-color="#7b6a39"/>
+          </radialGradient>
+        </defs>
+        <circle cx="32" cy="32" r="28" fill="url(#rg)" opacity=".22" stroke="#d8c88f" stroke-width="1.2"/>
+        <path d="M22 44q8 2 14-2.5T42 28q0-7-5-11t-13-1l-2 4q7-3 11 .5T35 28q0 7-5 10t-10 1z" fill="#d8c88f" opacity=".9"/>
+      </svg>
+      <div class="brand">L’Atelier de Guiltanas</div>
+      <span class="badge">Skeryon — Bêta</span>
+    </div>
+
+    <button id="lockBtn" class="btn" title="Verrouiller/Déverrouiller">🔒 <span class="lock-hint">Jeu</span><span class="edit-hint">Édition</span></button>
+
+    <div class="range" title="Volume maître">
+      <label>Vol.</label>
+      <input id="masterVol" type="range" min="0" max="100" step="1" value="80">
+    </div>
+
+    <div class="select" title="Colonnes">
+      <label>Colonnes</label>
+      <select id="colSelect">
+        <option>2</option><option selected>3</option><option>4</option><option>5</option>
+      </select>
+    </div>
+
+    <div class="search" title="Recherche (onglet actif)">
+      <span>🔎</span><input id="searchInput" placeholder="Rechercher…">
+    </div>
+
+    <button id="exportBtn" class="btn">Exporter JSON</button>
+    <label class="btn" for="importJson">Importer JSON</label>
+    <input id="importJson" type="file" accept="application/json" hidden>
+
+    <button id="dirBtn" class="btn">Importer un dossier</button>
+
+    <button id="stopAllBtn" class="btn danger" title="Arrêter tous les sons (global)">⏹️ TOUT STOPPER</button>
+  </div>
+</header>
+
+<nav class="tabs">
+  <div class="tabs-inner" id="tabs"></div>
+</nav>
+
+<main class="main">
+  <div id="grid" class="grid cols-3"></div>
+</main>
+
+<div class="panic">
+  <button id="panicBtn" class="btn danger">PANIC</button>
+</div>
+
+<div class="watermark" id="wm" title="Administration (PIN)">
+  © L’Atelier de Guiltanas — usage privé (bêta)
+</div>
+
+<footer class="footer">
+  <div class="hint">
+    <strong>Astuce :</strong> un nom de fichier audio qui correspond au libellé d’une carte (ex. <em>taverne_fond.mp3</em>) sera auto-assigné lors d’un “Importer un dossier”.
+  </div>
+</footer>
+
+<!-- Gate overlay -->
+<div class="overlay" id="gate">
+  <div class="panel">
+    <h3>Accès testeur</h3>
+    <p class="help">Entrez votre code pour déverrouiller l’application.</p>
+    <div class="field">
+      <input id="gateCode" placeholder="Code testeur (ex. SKERYON-ALPHA-01)" autocomplete="one-time-code" autofocus>
+      <button id="gateEnter" class="btn primary">Entrer</button>
+    </div>
+    <div class="help">Besoin d’aide ? Cliquez sur le logo pour “À propos”.</div>
+  </div>
+</div>
+
+<!-- Admin drawer -->
+<aside id="admin" class="drawer" aria-hidden="true">
+  <h3>Administration</h3>
+  <div class="hr"></div>
+  <section>
+    <h4>Codes testeurs</h4>
+    <div class="field">
+      <input id="newTester" placeholder="Nouveau code (ex. GUILTANAS-BETA-02)">
+      <button id="addTester" class="btn">Ajouter</button>
+    </div>
+    <table class="table" id="codesTable"><thead><tr><th>Code</th><th>Action</th></tr></thead><tbody></tbody></table>
+  </section>
+
+  <div class="hr"></div>
+  <section>
+    <h4>Stats</h4>
+    <div id="statsSummary" class="help"></div>
+    <div style="margin:.5rem 0;">
+      <button id="resetStats" class="btn">Réinitialiser stats</button>
+    </div>
+    <table class="table" id="statsTable"><thead><tr><th>Carte</th><th>Lectures</th><th>Durée (s)</th></tr></thead><tbody></tbody></table>
+  </section>
+
+  <div class="hr"></div>
+  <section>
+    <h4>Actions</h4>
+    <div class="controls-row">
+      <button id="forceLock" class="btn">Forcer verrouillage</button>
+      <button id="forceEdit" class="btn">Forcer édition</button>
+      <button id="resetApp" class="btn danger">Réinitialiser application</button>
+      <button id="exportAll" class="btn">Exporter configuration + stats</button>
+    </div>
+  </section>
+
+  <div class="hr"></div>
+  <section>
+    <h4>À propos</h4>
+    <p class="help">Chaque testeur utilise sa copie locale (navigateur/appareil). Pour partager une configuration : exporter le JSON puis l’importer sur l’autre appareil.</p>
+    <button id="otherCode" class="btn ghost">Saisir un autre code</button>
+  </section>
+</aside>
+
+<!-- About modal (reuses the gate panel via logo) -->
+<div id="aboutModal" class="overlay" style="display:none">
+  <div class="panel">
+    <h3>À propos</h3>
+    <p>AudioBoard JDR “Secure” — Version 0.9.2 (bouton TOUT STOPPER inclus)</p>
+    <ul>
+      <li>Thème : Skeryon sombre (vert/doré/parchemin chic)</li>
+      <li>Client-side uniquement (localStorage)</li>
+      <li>Import dossier auto-match (Chrome/Android)</li>
+      <li>Anti-copie dissuasif</li>
+    </ul>
+    <div class="controls-row">
+      <button id="aboutClose" class="btn">Fermer</button>
+      <button id="aboutResetCode" class="btn ghost">Saisir un autre code</button>
+    </div>
+  </div>
+</div>
+
+<div class="toast-wrap" id="toasts"></div>
+
+<script>
+/* =========================================================
+   AudioBoard JDR “Secure”
+   - Single-file (HTML+CSS+JS inline)
+   - No external deps
+   - LocalStorage persistence
+   ========================================================= */
+
+/* -------------------------
+   Utilities & constants
+   ------------------------- */
+const $ = sel => document.querySelector(sel);
+const $$ = sel => Array.from(document.querySelectorAll(sel));
+
+const LS_KEY = 'audioboard_secure_v092';
+const ACCESS_KEY = 'audioboard_access_ok';
+
+const DEFAULT_TESTERS = ["SKERYON-ALPHA-01","SKERYON-ALPHA-02","GUILTANAS-BETA-01"];
+
+// poor-man obfuscation (no heavy crypto)
+const ADMIN_SALT = 'skeryon-kintsugi';
+const ADMIN_PIN_PLAIN = '7429';
+const ADMIN_PIN_HASH = btoa(ADMIN_PIN_PLAIN + '|' + ADMIN_SALT);
+
+function toast(msg, t=2000){
+  const box = document.createElement('div');
+  box.className='toast';
+  box.textContent = msg;
+  $('#toasts').appendChild(box);
+  setTimeout(()=>box.remove(), t);
+}
+
+function saveState(){
+  localStorage.setItem(LS_KEY, JSON.stringify(state));
+}
+function loadState(){
+  let s = localStorage.getItem(LS_KEY);
+  if(!s) return null;
+  try{ return JSON.parse(s);}catch{ return null;}
+}
+
+function norm(s){
+  return (s||'').toString().normalize('NFD').replace(/[\u0300-\u036f]/g,'')
+    .toLowerCase().replace(/[^a-z0-9]+/g,'_').replace(/^_+|_+$/g,'');
+}
+
+function download(filename, text){
+  const blob = new Blob([text], {type:'application/json'});
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url; a.download = filename; document.body.appendChild(a); a.click();
+  setTimeout(()=>{ URL.revokeObjectURL(url); a.remove(); }, 0);
+}
+
+/* -------------------------
+   Data model
+   ------------------------- */
+const TABS = [
+  { id:'ambiances', label:'AMBIANCES', cards:[
+    'Taverne (fond)','Forêt (jour)','Forêt (nuit)','Ville (jour)','Ville (nuit)','Pluie fine','Orage / Tonnerre','Vent soutenu','Caverne sourde','Donjon ancien','Marché / Foule','Feu de camp'
+  ]},
+  { id:'bruitages', label:'BRUITAGES', cards:[
+    'Pas sur pierre','Pas sur terre','Porte bois','Porte métal','Choc métal','Bris de verre','Grincement','Cloche','Cheval (pas)','Charrette','Ruisseau / eau','Torrent'
+  ]},
+  { id:'magie', label:'MAGIE', cards:[
+    'Sort de feu','Sort de glace','Sort de foudre','Guérison','Lumière / halo','Téléportation','Rituel long','Aura mystique'
+  ]},
+  { id:'combat', label:'CRÉATURES / COMBAT', cards:[
+    'Cri de monstre','Rugissement','Sifflement serpent','Arc (tir)','Épée (sortie)','Impact bouclier','Corps à corps (coup)','Explosion'
+  ]},
+  { id:'pnj', label:'PNJ / MULTITUDE', cards:[
+    'Chuchotements','Rires','Applaudissements','Brouhaha taverne','Colère / protestations','Prière / chant','Forgeron / enclume','Écurie / sabots'
+  ]},
+];
+
+const initialCards = [];
+for (const tab of TABS){
+  for (const label of tab.cards){
+    initialCards.push({
+      id: norm(label),
+      tab: tab.id,
+      label,
+      volume: 80,
+      loop: false,
+      filename: null,
+      checksum: null,
+      imageName: null,
+      imageChecksum: null,
+      // runtime (not persisted)
+      _audioUrl: null,
+      _imageUrl: null,
+      _playing: false,
+      _startTs: 0
+    });
+  }
+}
+
+const defaultState = {
+  version: '0.9.2',
+  activeTab: 'ambiances',
+  columns: 3,
+  master: 80,
+  locked: true,
+  search: '',
+  testers: DEFAULT_TESTERS.slice(),
+  cards: initialCards,
+  panic: {
+    id:'panic', label:'PANIC', volume: 90, loop: false, filename:null, checksum:null,
+    imageName:null, imageChecksum:null, _audioUrl:null, _playing:false, _startTs:0
+  },
+  stats: {
+    sessions: 0, lastAccess: Date.now(), totalMs: 0,
+    perCard: {}, perTab: {}, top: []
+  }
+};
+
+let state = loadState() || structuredClone(defaultState);
+if(!state.stats || typeof state.stats!=='object'){ state.stats = structuredClone(defaultState.stats); }
+state.stats.sessions = (state.stats.sessions||0) + 1;
+saveState();
+
+let ctx = null; // AudioContext
+let gains = new Map(); // id -> GainNode
+let sources = new Map(); // id -> {srcNode, audioEl?}
+let startedAt = Date.now();
+
+/* -------------------------
+   Anti-copy & devtools
+   ------------------------- */
+document.addEventListener('contextmenu', e=>e.preventDefault());
+document.addEventListener('keydown', e=>{
+  const k = e.key.toLowerCase();
+  if ((e.ctrlKey && (k==='s'||k==='u'||k==='p')) || (e.ctrlKey && e.shiftKey && k==='i') || k==='f12'){
+    e.preventDefault(); toast('Fonction désactivée sur cette version.');
+  }
+});
+// rudimentary devtools detect (width/height deltas)
+let devTimer = setInterval(()=>{
+  const opened = (window.outerWidth - window.innerWidth > 160) || (window.outerHeight - window.innerHeight > 160);
+  const banner = $('#devBanner');
+  if (opened){
+    banner.style.display='block';
+    document.body.classList.add('freeze');
+  } else {
+    banner.style.display='none';
+    document.body.classList.remove('freeze');
+  }
+}, 700);
+
+/* -------------------------
+   Gate (tester access)
+   ------------------------- */
+function showGateIfNeeded(){
+  if(localStorage.getItem(ACCESS_KEY)==='1'){ $('#gate').style.display='none'; return; }
+  $('#gate').style.display='flex';
+}
+function validateTester(code){
+  const c = (code||'').trim();
+  if(!c){ toast('Code requis.'); return false; }
+  if(state.testers.includes(c)){
+    localStorage.setItem(ACCESS_KEY,'1');
+    $('#gate').style.display='none';
+    toast('Accès autorisé.');
+    return true;
+  }
+  toast('Code invalide.');
+  return false;
+}
+
+/* -------------------------
+   Admin
+   ------------------------- */
+let adminOpen=false;
+function promptAdmin(){
+  const pin = prompt('PIN Admin :');
+  if(pin===null) return false;
+  const ok = (btoa(pin + '|' + ADMIN_SALT) === ADMIN_PIN_HASH);
+  if(!ok){ toast('PIN incorrect.'); return false; }
+  $('#admin').classList.add('open'); adminOpen=true; renderAdmin();
+  return true;
+}
+function closeAdmin(){
+  $('#admin').classList.remove('open'); adminOpen=false;
+}
+function renderAdmin(){
+  // codes
+  const tb = $('#codesTable tbody'); tb.innerHTML='';
+  for(const code of state.testers){
+    const tr = document.createElement('tr');
+    tr.innerHTML = `<td>${code}</td><td><button class="btn" data-del="${code}">Supprimer</button></td>`;
+    tb.appendChild(tr);
+  }
+  tb.querySelectorAll('button[data-del]').forEach(b=>{
+    b.onclick=()=>{
+      const c=b.getAttribute('data-del');
+      state.testers = state.testers.filter(x=>x!==c);
+      saveState(); renderAdmin(); toast('Code supprimé.');
+    };
+  });
+
+  // stats summary
+  const sess = state.stats.sessions||0;
+  const last = new Date(state.stats.lastAccess||Date.now()).toLocaleString();
+  const totalSec = Math.round((state.stats.totalMs||0)/1000);
+  $('#statsSummary').innerHTML = `Sessions : <strong>${sess}</strong> — Dernier accès : <strong>${last}</strong> — Temps total ~ <strong>${totalSec}s</strong>`;
+  // per card table
+  const st = $('#statsTable tbody'); st.innerHTML='';
+  for(const c of state.cards){
+    const s = state.stats.perCard?.[c.id] || {plays:0, seconds:0};
+    const tr=document.createElement('tr');
+    tr.innerHTML = `<td>${c.label}</td><td>${s.plays|0}</td><td>${Math.round(s.seconds||0)}</td>`;
+    st.appendChild(tr);
+  }
+}
+
+/* -------------------------
+   Tabs & grid render
+   ------------------------- */
+function renderTabs(){
+  const wrap = $('#tabs'); wrap.innerHTML='';
+  for(const t of TABS){
+    const b = document.createElement('button');
+    b.className = 'tab' + (state.activeTab===t.id?' active':'');
+    b.textContent = t.label;
+    b.onclick=()=>{ state.activeTab=t.id; saveState(); renderTabs(); renderGrid(); };
+    wrap.appendChild(b);
+  }
+}
+
+function iconSvg(){
+  return `<svg class="iconic" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 12a8 8 0 1 1 16 0v6a2 2 0 0 1-2 2h-2v-6h-2v6h-4v-6H8v6H6a2 2 0 0 1-2-2v-6z"/></svg>`;
+}
+
+function cardStatus(c){
+  // grey (none), green (assigned), orange (remember name but missing), blue (playing)
+  if (c._playing) return {cls:'play', txt:'lecture'};
+  if (c.filename && !c._audioUrl) return {cls:'warn', txt:'à réassigner'};
+  if (c._audioUrl) return {cls:'ok', txt:'assigné'};
+  return {cls:'miss', txt:'non assigné'};
+}
+
+function ensureCtx(){
+  if(!ctx){
+    const AC = window.AudioContext || window.webkitAudioContext;
+    ctx = AC ? new AC() : null;
+  }
+  return ctx;
+}
+
+async function decodeFileToBuffer(file){
+  const array = await file.arrayBuffer();
+  const audioCtx = ensureCtx();
+  try{
+    return await audioCtx.decodeAudioData(array);
+  }catch(e){
+    return null;
+  }
+}
+
+function gainFor(id){
+  if(!ensureCtx()) return null;
+  if(!gains.has(id)){
+    const g = ctx.createGain();
+    g.connect(ctx.destination);
+    gains.set(id, g);
+  }
+  return gains.get(id);
+}
+
+function effectiveVolume(card){
+  return (card.volume/100) * (state.master/100);
+}
+
+function setGain(id, vol){
+  const g = gainFor(id);
+  if(g) g.gain.value = vol;
+}
+
+function stopSource(id){
+  const rec = sources.get(id);
+  if(!rec) return;
+  try{
+    if(rec.srcNode && rec.srcNode.stop) rec.srcNode.stop(0);
+  }catch{}
+  try{
+    if(rec.audioEl){ rec.audioEl.pause(); rec.audioEl.currentTime=0; }
+  }catch{}
+  sources.delete(id);
+}
+
+function updateStatsOnStop(card){
+  if(!card._startTs) return;
+  const dur = (Date.now()-card._startTs)/1000;
+  if(!state.stats.perCard[card.id]) state.stats.perCard[card.id]={plays:0, seconds:0};
+  state.stats.perCard[card.id].seconds += dur;
+  card._startTs = 0;
+}
+
+async function togglePlay(card){
+  ensureCtx();
+  if(card._playing){
+    stopSource(card.id);
+    card._playing=false;
+    updateStatsOnStop(card);
+    renderGrid();
+    return;
+  }
+  if(!card._audioUrl){
+    toast('Aucun audio assigné.');
+    return;
+  }
+  // set gain
+  setGain(card.id, effectiveVolume(card));
+  // Try WebAudio buffer first
+  let usedHtmlAudio = false;
+  try{
+    const res = await fetch(card._audioUrl);
+    const buf = await res.arrayBuffer();
+    const audioBuf = await ctx.decodeAudioData(buf);
+    const src = ctx.createBufferSource();
+    src.buffer = audioBuf; src.loop = !!card.loop;
+    src.connect(gainFor(card.id));
+    src.onended = ()=>{
+      if(!card.loop){
+        card._playing=false;
+        updateStatsOnStop(card);
+        renderGrid();
+      }
+    };
+    src.start(0);
+    sources.set(card.id, {srcNode:src});
+  }catch(e){
+    // fallback <audio> (some codecs)
+    const el = new Audio(card._audioUrl);
+    el.loop = !!card.loop;
+    el.volume = effectiveVolume(card);
+    el.onended = ()=>{
+      if(!card.loop){
+        card._playing=false;
+        updateStatsOnStop(card);
+        renderGrid();
+      }
+    };
+    el.play().catch(()=>toast('Lecture impossible.'));
+    sources.set(card.id, {audioEl: el});
+    usedHtmlAudio = true;
+  }
+  // stats
+  state.stats.perCard[card.id] = state.stats.perCard[card.id] || {plays:0, seconds:0};
+  state.stats.perCard[card.id].plays += 1;
+  state.stats.perTab[card.tab] = (state.stats.perTab[card.tab]||0)+1;
+  card._playing = true; card._startTs = Date.now();
+  saveState();
+  renderGrid();
+}
+
+function attachFile(inputAccept, cb){
+  const inp = document.createElement('input');
+  inp.type='file'; inp.accept=inputAccept;
+  inp.onchange=(e)=>{
+    const f = e.target.files?.[0];
+    if(f) cb(f);
+  };
+  inp.click();
+}
+
+function revokeUrl(url){ try{ if(url) URL.revokeObjectURL(url); }catch{} }
+
+async function assignAudio(card){
+  attachFile('.mp3,.wav', async f=>{
+    revokeUrl(card._audioUrl);
+    card._audioUrl = URL.createObjectURL(f);
+    card.filename = f.name;
+    card.checksum = String(f.size); // lightweight surrogate
+    saveState(); renderGrid(); toast(`Audio assigné : ${f.name}`);
+  });
+}
+
+function clearAudio(card){
+  stopSource(card.id);
+  revokeUrl(card._audioUrl);
+  card._audioUrl=null; card.filename=null; card.checksum=null; card._playing=false;
+  saveState(); renderGrid(); toast('Audio effacé.');
+}
+
+function assignImage(card){
+  attachFile('.png,.jpg,.jpeg,.svg', f=>{
+    revokeUrl(card._imageUrl);
+    card._imageUrl = URL.createObjectURL(f);
+    card.imageName = f.name;
+    card.imageChecksum = String(f.size);
+    saveState(); renderGrid(); toast(`Image assignée : ${f.name}`);
+  });
+}
+function clearImage(card){
+  revokeUrl(card._imageUrl);
+  card._imageUrl=null; card.imageName=null; card.imageChecksum=null;
+  saveState(); renderGrid(); toast('Image effacée.');
+}
+
+function renderCard(card){
+  const st = cardStatus(card);
+  const div = document.createElement('div');
+  div.className='card';
+  div.innerHTML = `
+    <div class="icon">${ card._imageUrl ? `<img src="${card._imageUrl}" alt="" style="max-width:100%;max-height:100%;border-radius:.7rem">` : iconSvg() }</div>
+    <div class="body">
+      <h4>${card.label} ${card.imageName && !card._imageUrl ? '<span class="pill warn" title="Image mémorisée mais non rechargée">🖼️</span>':''}</h4>
+      <div class="meta">
+        <span class="pill ${st.cls}">${st.txt}</span>
+        <span class="pill">Vol. ${card.volume}</span>
+        ${card.loop?'<span class="pill">Boucle</span>':''}
+      </div>
+      <div class="controls-row">
+        <button class="btn" data-play>${card._playing?'⏹️ Stop':'▶️ Jouer'}</button>
+        <div class="edit ${state.locked?'hidden':''}">
+          <div class="controls-row">
+            <button class="btn" data-audio>Assigner audio</button>
+            <button class="btn ghost" data-audio-clear>Effacer audio</button>
+            <button class="btn" data-image>Assigner image</button>
+            <button class="btn ghost" data-image-clear>Effacer image</button>
+          </div>
+          <div class="controls-row" style="margin-top:.3rem">
+            <label>Vol.</label>
+            <input type="range" min="0" max="100" step="1" value="${card.volume}" data-vol>
+            <label><input type="checkbox" ${card.loop?'checked':''} data-loop> Boucle</label>
+          </div>
+        </div>
+      </div>
+    </div>
+  `;
+  // hooks
+  div.querySelector('[data-play]').onclick=()=>togglePlay(card);
+  const av = div.querySelector('[data-vol]');
+  if(av) av.oninput=e=>{ card.volume=+e.target.value; setGain(card.id, effectiveVolume(card)); saveState(); div.querySelector('.meta .pill:nth-child(2)').textContent='Vol. '+card.volume; };
+  const lp = div.querySelector('[data-loop]');
+  if(lp) lp.onchange=e=>{ card.loop=!!e.target.checked; saveState(); renderGrid(); };
+  const aa = div.querySelector('[data-audio]'); if(aa) aa.onclick=()=>assignAudio(card);
+  const ac = div.querySelector('[data-audio-clear]'); if(ac) ac.onclick=()=>clearAudio(card);
+  const im = div.querySelector('[data-image]'); if(im) im.onclick=()=>assignImage(card);
+  const ic = div.querySelector('[data-image-clear]'); if(ic) ic.onclick=()=>clearImage(card);
+  return div;
+}
+
+function renderGrid(){
+  const g = $('#grid'); g.className = `grid cols-${state.columns}`; g.innerHTML='';
+  const q = norm(state.search||'');
+  const list = state.cards.filter(c=>c.tab===state.activeTab && (q==='' || norm(c.label).includes(q)));
+  for(const c of list) g.appendChild(renderCard(c));
+}
+
+/* -------------------------
+   Header controls
+   ------------------------- */
+$('#lockBtn').onclick=()=>{
+  state.locked = !state.locked;
+  document.body.classList.toggle('locked', state.locked);
+  document.body.classList.toggle('unlocked', !state.locked);
+  $('#lockBtn').innerHTML = (state.locked? '🔒 <span class="lock-hint">Jeu</span>' : '🔓 <span class="edit-hint">Édition</span>');
+  saveState();
+  renderGrid();
+};
+$('#masterVol').value = state.master;
+$('#masterVol').oninput = e=>{
+  state.master = +e.target.value; saveState();
+  // update all current gains
+  state.cards.forEach(c=>{ if(c._playing) setGain(c.id, effectiveVolume(c)); });
+  // panic too
+  if(state.panic._playing) setGain(state.panic.id, state.panic.volume/100 * state.master/100);
+};
+
+$('#colSelect').value = String(state.columns);
+$('#colSelect').onchange = e=>{ state.columns = +e.target.value; saveState(); renderGrid(); };
+
+$('#searchInput').value = state.search||'';
+$('#searchInput').oninput = e=>{ state.search = e.target.value; renderGrid(); };
+
+$('#exportBtn').onclick=()=>{
+  const snapshot = JSON.parse(JSON.stringify(state));
+  // strip runtime object URLs
+  snapshot.cards.forEach(c=>{ delete c._audioUrl; delete c._imageUrl; delete c._playing; delete c._startTs; });
+  delete snapshot.panic._audioUrl; delete snapshot.panic._playing; delete snapshot.panic._startTs;
+  snapshot.stats.lastAccess = Date.now();
+  const name = 'audioboard-config.json';
+  download(name, JSON.stringify(snapshot, null, 2));
+  toast('Configuration exportée.');
+};
+
+$('#importJson').onchange = e=>{
+  const f = e.target.files?.[0]; if(!f) return;
+  const r = new FileReader();
+  r.onload = ()=>{
+    try{
+      const data = JSON.parse(r.result);
+      if(!data.version) throw new Error('Format invalide');
+      // carefully merge but replace primitives
+      state = data;
+      // reset runtime urls
+      for(const c of state.cards){ c._audioUrl=null; c._imageUrl=null; c._playing=false; c._startTs=0; }
+      state.panic._audioUrl=null; state.panic._playing=false; state.panic._startTs=0;
+      saveState(); renderTabs(); renderGrid();
+      $('#masterVol').value = state.master;
+      $('#colSelect').value = String(state.columns);
+      toast('Configuration importée.');
+    }catch{
+      toast('JSON invalide.');
+    }
+  };
+  r.readAsText(f);
+};
+
+$('#dirBtn').onclick=async ()=>{
+  if(!window.showDirectoryPicker){ toast('API dossier indisponible sur ce navigateur.'); return; }
+  try{
+    const dir = await window.showDirectoryPicker({mode:'read'});
+    let matched=0, total=0;
+    for await (const [name, handle] of dir.entries()){
+      if(handle.kind!=='file') continue;
+      const low = name.toLowerCase();
+      if(!(low.endsWith('.mp3') || low.endsWith('.wav'))) continue;
+      total++;
+      const file = await handle.getFile();
+      const id = norm(name.replace(/\.(mp3|wav)$/i,''));
+      const target = state.cards.find(c => c.id===id);
+      if(target){
+        revokeUrl(target._audioUrl);
+        target._audioUrl = URL.createObjectURL(file);
+        target.filename = file.name;
+        target.checksum = String(file.size);
+        matched++;
+      }
+    }
+    saveState(); renderGrid();
+    toast(`Import dossier : ${matched}/${total} fichiers assignés.`);
+  }catch(e){
+    toast('Import annulé.');
+  }
+};
+
+/* -------------------------
+   Stop ALL button (GLOBAL)
+   ------------------------- */
+function stopAll(){
+  // stop all card sources
+  for(const c of state.cards){
+    if(c._playing){ stopSource(c.id); c._playing=false; updateStatsOnStop(c); }
+  }
+  // stop panic
+  if(state.panic._playing){ stopSource(state.panic.id); state.panic._playing=false; updateStatsOnStop(state.panic); }
+  renderGrid();
+  toast('Toutes les lectures ont été stoppées.');
+}
+$('#stopAllBtn').onclick = stopAll;
+
+/* -------------------------
+   Logo (About)
+   ------------------------- */
+$('#logo').onclick=()=>{ $('#aboutModal').style.display='flex'; };
+$('#aboutClose').onclick=()=>{ $('#aboutModal').style.display='none'; };
+$('#aboutResetCode').onclick=()=>{ localStorage.removeItem(ACCESS_KEY); $('#aboutModal').style.display='none'; $('#gate').style.display='flex'; };
+
+/* -------------------------
+   Watermark → Admin
+   ------------------------- */
+$('#wm').onclick=()=>{ promptAdmin(); };
+
+$('#otherCode').onclick=()=>{ localStorage.removeItem(ACCESS_KEY); toast('Prochain démarrage : demande de code.'); };
+$('#addTester').onclick=()=>{
+  const v = $('#newTester').value.trim();
+  if(!v) return;
+  if(state.testers.includes(v)){ toast('Déjà présent.'); return; }
+  state.testers.push(v); saveState(); renderAdmin(); $('#newTester').value=''; toast('Code ajouté.');
+};
+$('#resetStats').onclick=()=>{
+  state.stats = structuredClone(defaultState.stats);
+  saveState(); renderAdmin(); toast('Stats réinitialisées.');
+};
+$('#forceLock').onclick=()=>{ if(!state.locked){ $('#lockBtn').click(); } toast('Mode jeu'); };
+$('#forceEdit').onclick=()=>{ if(state.locked){ $('#lockBtn').click(); } toast('Mode édition'); };
+$('#resetApp').onclick=()=>{
+  if(!confirm('Réinitialiser l’application et purger localStorage ?')) return;
+  // revoke urls
+  state.cards.forEach(c=>{ revokeUrl(c._audioUrl); revokeUrl(c._imageUrl); });
+  revokeUrl(state.panic._audioUrl);
+  localStorage.removeItem(LS_KEY); localStorage.removeItem(ACCESS_KEY);
+  location.reload();
+};
+$('#exportAll').onclick=()=>$('#exportBtn').click();
+
+/* -------------------------
+   PANIC button (acts like a card)
+   ------------------------- */
+$('#panicBtn').onclick=async ()=>{
+  // if no audio, in unlocked mode propose assign
+  if(!state.panic._audioUrl && !state.locked){
+    attachFile('.mp3,.wav', f=>{
+      revokeUrl(state.panic._audioUrl);
+      state.panic._audioUrl = URL.createObjectURL(f);
+      state.panic.filename = f.name; state.panic.checksum = String(f.size);
+      saveState(); toast('Audio PANIC assigné.');
+    });
+    return;
+  }
+  // toggle play like a card
+  const p = state.panic;
+  if(p._playing){ stopSource(p.id); p._playing=false; updateStatsOnStop(p); toast('PANIC stoppé.'); return; }
+  if(!p._audioUrl){ toast('Aucun audio PANIC. (Déverrouillez pour en assigner)'); return; }
+  ensureCtx();
+  setGain(p.id, (p.volume/100) * (state.master/100));
+  try{
+    const res = await fetch(p._audioUrl);
+    const buf = await res.arrayBuffer();
+    const audioBuf = await ctx.decodeAudioData(buf);
+    const src = ctx.createBufferSource();
+    src.buffer = audioBuf; src.loop = !!p.loop;
+    src.connect(gainFor(p.id));
+    src.onended = ()=>{ if(!p.loop){ p._playing=false; updateStatsOnStop(p);} };
+    src.start(0);
+    sources.set(p.id, {srcNode:src});
+  }catch{
+    const el = new Audio(p._audioUrl);
+    el.loop = !!p.loop;
+    el.volume = (p.volume/100) * (state.master/100);
+    el.onended = ()=>{ if(!p.loop){ p._playing=false; updateStatsOnStop(p);} };
+    el.play().catch(()=>toast('Lecture PANIC impossible.'));
+    sources.set(p.id, {audioEl:el});
+  }
+  p._playing = true; p._startTs = Date.now();
+  saveState();
+};
+
+/* -------------------------
+   Export on unload time
+   ------------------------- */
+window.addEventListener('beforeunload', ()=>{
+  state.stats.lastAccess = Date.now();
+  state.stats.totalMs += (Date.now()-startedAt);
+  saveState();
+});
+
+/* -------------------------
+   Build UI
+   ------------------------- */
+function build(){
+  // header lock state
+  document.body.classList.toggle('locked', state.locked);
+  document.body.classList.toggle('unlocked', !state.locked);
+  $('#lockBtn').innerHTML = (state.locked? '🔒 <span class="lock-hint">Jeu</span>' : '🔓 <span class="edit-hint">Édition</span>');
+  renderTabs(); renderGrid();
+  showGateIfNeeded();
+}
+build();
+
+/* -------------------------
+   Add logos, statuses after load
+   ------------------------- */
+document.addEventListener('click', ()=>{ // first user gesture → resume audio ctx
+  if(ctx && ctx.state==='suspended'){ ctx.resume(); }
+}, {once:false});
+
+/* -------------------------
+   Gate handlers
+   ------------------------- */
+$('#gateEnter').onclick=()=>validateTester($('#gateCode').value);
+$('#gateCode').addEventListener('keydown', e=>{ if(e.key==='Enter') $('#gateEnter').click(); });
+
+</script>
+</body>
+</html>
